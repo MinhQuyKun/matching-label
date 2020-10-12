@@ -124,6 +124,7 @@ class MatchingController extends Controller
 
     /*
     * Matching DHL label
+    * Document: https://sandbox.dhlecommerce.asia/API/docs/v2/reprintlabel.html
     */
     public function matchingDhl (Request $request)
     {
