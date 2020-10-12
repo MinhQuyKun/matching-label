@@ -8,6 +8,7 @@ use Smalot\PdfParser\Parser;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Storage;
 use setasign\Fpdi\Tfpdf;
+use Illuminate\Support\Facades\Http;
 
 class MatchingController extends Controller
 {
@@ -126,7 +127,54 @@ class MatchingController extends Controller
     */
     public function matchingDhl (Request $request)
     {
+        if ($request['refColumn'] and $request['shippingFilePath']) {
+            $refColumn = $request['refColumn'];
+            $fileTracking = $request['shippingFilePath'];
 
+            // Fetch excel file
+            // $spreadsheet = IOFactory::load($fileTracking);
+            // $sheetData = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+
+            // Get authentication
+            $auth = Http::get('https://api.dhlecommerce.dhl.com/rest/v1/OAuth/AccessToken', [
+                'clientId' => env('DHL_CLIENT_ID'),
+                'password' => env('DHL_PASSWORD'),
+                'token' => 'json'
+            ]);
+            // Get token
+            $token = $auth['accessTokenResponse']['token'];
+
+            foreach ($sheetData as $rows => $k) {
+
+                foreach ($k as $key => $value) {
+                    if ($key == $refColumn and $value !== 'shipping_pack_id') {
+                        // Api get label
+                        $labelRequest = Http::post('https://api.dhlecommerce.dhl.com/rest/v2/Label/Reprint', [
+                            "labelReprintRequest" => [
+                                "hdr" => [
+                                    "messageType" => "LABELREPRINT",
+                                    "accessToken" => $token,
+                                    "messageVersion" => "1.1",
+                                    "messageLanguage" => "en"
+                                ],
+                                "bd" => [
+                                    "shipmentItems" => [
+                                        [
+                                            "shipmentID" => $value
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]);
+
+                        // Get label content
+                        $label = $labelRequest['labelReprintResponse']['bd']['shipmentItems'][0]['content'];
+
+                    }
+                }
+
+            }
+        }
     }
 
 }
